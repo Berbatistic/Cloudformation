@@ -1,0 +1,56 @@
+Parameters:
+  DBInstanceClass:
+    Type: String
+    Default: 'db.t2.micro'
+    AllowedValues:
+      - 'db.t2.micro'
+      - 'db.m3.large'
+      - 'db.m1.xlarge'
+  DbUsername:
+    Type: String
+  DbPassword:
+    Type: String
+    NoEcho: True
+  AllocatedStorage:
+    Type: Number
+    Default: 20
+
+
+
+Resources:
+  MyDbSubnet:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: RDS Subnet Group
+      SubnetIds:
+        - !ImportValue PrivateSubnet
+        - !ImportValue PrivateSubnet2
+
+
+
+  DBSecurityGroup:
+    Type: AWS::RDS::DBSecurityGroup
+    Properties:
+      EC2VpcId: !ImportValue VPCName
+      GroupDescription: database access
+      DBSecurityGroupIngress:
+        - EC2SecurityGroupId: !ImportValue 'PublicSecurityGroup'
+
+  testDb:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: MytestDb
+      DBName: testDb
+      AllocatedStorage: !Ref AllocatedStorage
+      DBInstanceClass: !Ref DBInstanceClass
+      Engine: MySQL
+      MasterUsername: !Ref DbUsername
+      MasterUserPassword: !Ref DbPassword
+      Tags:
+      - Key: Name
+        Value: Master Database
+      VPCSecurityGroups:
+        - !ImportValue PublicSecurityGroup
+      DBSecurityGroups:
+        - !Ref DBSecurityGroup
+      DBSubnetGroupName: !Ref MyDbSubnet

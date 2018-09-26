@@ -1,0 +1,177 @@
+Parameters:
+  VpcCidrBlock:
+    Type: String
+    Default: 10.0.0.0/16
+
+  PublicSubnetCidr:
+    Type: String
+    Description: "Please Enter the cidr range for the Public Subnet"
+    Default: 10.0.1.0/24
+
+  PrivateSubnetCidr:
+    Type: String
+    Description: "Please Enter the cidr Range for the Private Subnet"
+    Default: 10.0.2.0/24
+
+  PrivateSubnetCidr2:
+    Type: String
+    Description: "Please Enter the cidr Range for the Private Subnet"
+    Default: 10.0.3.0/24
+
+  PublicSecurityGroupPort1:
+    Type: String
+    Default: '22'
+
+  PublicSecurityGroupPort2:
+    Type: String
+    Default: '80'
+
+  PublicSecurityGroupIPAllowed:
+    Type: String
+    Default: '0.0.0.0/0'
+  PublicSecurityGroupIPAllowed2:
+    Type: String
+    Default: '0.0.0.0/0'
+  PrivateSecurityGroupCidrIPAllowed:
+    Type: String
+    Default: '0.0.0.0/0'
+
+
+
+
+Resources:
+  SaadVPCCF:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref VpcCidrBlock
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: Saad-111
+  myInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: Saad-111
+  MyVPCGateWay:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref SaadVPCCF
+      InternetGatewayId: !Ref myInternetGateway
+
+  PublicSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref SaadVPCCF
+      CidrBlock: !Ref PublicSubnetCidr
+      MapPublicIpOnLaunch: "true"
+      AvailabilityZone:
+        Fn::Select:
+          - 2
+          - Fn::GetAZs: ""
+
+  PrivateSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref SaadVPCCF
+      CidrBlock: !Ref PrivateSubnetCidr
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+
+  PrivateSubnet2:
+      Type: 'AWS::EC2::Subnet'
+      Properties:
+        VpcId: !Ref SaadVPCCF
+        CidrBlock: !Ref PrivateSubnetCidr2
+        AvailabilityZone:
+          Fn::Select:
+            - 1
+            - Fn::GetAZs: ""
+
+
+
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref SaadVPCCF
+
+  PublicSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: >-
+        A Public Security Group to  be linked with EC2 Instance to allow SSH and
+        HTTP access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref PublicSecurityGroupPort1
+          ToPort: !Ref PublicSecurityGroupPort1
+          CidrIp: !Ref PublicSecurityGroupIPAllowed
+        - IpProtocol: tcp
+          FromPort: !Ref PublicSecurityGroupPort2
+          ToPort: !Ref PublicSecurityGroupPort2
+          CidrIp: !Ref PublicSecurityGroupIPAllowed
+      VpcId: !Ref SaadVPCCF
+
+  PrivateSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: >-
+        A Private Security Group to  be linked with Db to allow SqlAccess
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '3306'
+          ToPort: '3306'
+          SourceSecurityGroupId: !Ref PublicSecurityGroup
+        - IpProtocol: tcp
+          FromPort: '3306'
+          ToPort: '3306'
+          CidrIp: !Ref PrivateSecurityGroupCidrIPAllowed
+      VpcId: !Ref SaadVPCCF
+
+  CFSubnetRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+
+  PublicRouteForTable:
+    Type: AWS::EC2::Route
+    Properties:
+      GatewayId: !Ref myInternetGateway
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+
+
+
+
+
+
+Outputs:
+  SaadVPCCF:
+    Description: A reference to the created VPC
+    Value: !Ref SaadVPCCF
+    Export:
+      Name: 'VPCName'
+  PublicSubnet:
+    Description: A reference to the created PublicSubnet
+    Value: !Ref PublicSubnet
+    Export:
+      Name: "PublicSubnet"
+  PublicSecurityGroup:
+    Description: A reference to the created security group allowing SSH and TCP access to Instance
+    Value: !Ref PublicSecurityGroup
+    Export:
+      Name: "PublicSecurityGroup"
+  PrivateSubnet:
+    Description: A reference to the created PublicSubnet
+    Value: !Ref PrivateSubnet
+    Export:
+      Name: "PrivateSubnet"
+  PrivateSubnet2:
+    Description: A reference to the created PublicSubnet
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: "PrivateSubnet2"
